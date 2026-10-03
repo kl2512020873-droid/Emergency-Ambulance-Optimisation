@@ -1,0 +1,436 @@
+import java.util.*;
+
+public class EmergencyAmbulanceOptimization {
+
+    // Travel Cost Matrix (Adjacency Matrix)
+    static int[][] costMatrix = {
+        {0, 15, 25, 35},
+        {15, 0, 30, 28},
+        {25, 30, 0, 20},
+        {35, 28, 20, 0}
+    };
+
+    // Location names
+    static String[] locations = {
+        "Hospital",
+        "Emergency Location B",
+        "Emergency Location C",
+        "Emergency Location D"
+    };
+
+    // ============================================
+    // Greedy Route Optimization
+    // ============================================
+    public static String greedyEAROP(int[][] dist) {
+        // TO BE IMPLEMENTED: Greedy Algorithm logic
+        // Write your code here
+        int totalLoc = dist.length;
+        boolean[] isVisited = new boolean[totalLoc];
+        
+        int currentLoc = 0; 
+        isVisited[0] = true;
+        
+        String pathResult = locations[0];
+        int totalDistance = 0;
+
+        for (int step = 0; step < totalLoc - 1; step++) {
+            int nearestNode = -1;
+            int minDist = 999999;
+
+            for (int i = 0; i < totalLoc; i++) {
+                if (!isVisited[i] && dist[currentLoc][i] < minDist) {
+                    minDist = dist[currentLoc][i];
+                    nearestNode = i;
+                }
+            }
+
+            if (nearestNode != -1) {
+                isVisited[nearestNode] = true;
+                totalDistance += minDist;
+                pathResult += " -> " + locations[nearestNode];
+                currentLoc = nearestNode;
+            }
+        }
+
+    
+        totalDistance += dist[currentLoc][0];
+        pathResult += " -> " + locations[0];
+
+        return "Greedy Ambulance Route: " + pathResult + " | Total Cost: " + totalDistance;
+    }
+
+    // ============================================
+    // Dynamic Programming Route Optimization
+    // ============================================
+    public static String dynamicProgrammingEAROP(int[][] dist) {
+        // TO BE IMPLEMENTED: Dynamic Programming Algorithm logic
+        // Write your code here
+        int n = dist.length;
+        int ALL_VISITED_BIT = (1 << n) - 1;
+        int[][] dpTable = new int[n][1 << n];
+        String[][] routePath = new String[n][1 << n];
+
+        for (int[] row : dpTable) {
+            Arrays.fill(row, -1);
+        }
+
+        int finalCost = dynamicProgrammingEAROPHelper(0, 1, dist, dpTable, ALL_VISITED_BIT, routePath);
+        return "Dynamic Programming Ambulance Route: " + routePath[0][1] + " | Total Cost: " + finalCost;
+    }
+
+    // Dynamic Programming Helper Method
+    private static int dynamicProgrammingEAROPHelper(
+            int pos,
+            int mask,
+            int[][] dist,
+            int[][] memo,
+            int VISITED_ALL,
+            String[][] paths) {
+        // TO BE IMPLEMENTED:
+        // Private recursive method for Dynamic Programming algorithm logic
+        // Write your code here
+        if (mask == VISITED_ALL) {
+            paths[pos][mask] = locations[pos] + " -> " + locations[0];
+            return dist[pos][0];
+        }
+
+        if (memo[pos][mask] != -1) {
+            return memo[pos][mask];
+        }
+
+        int minCost = 999999;
+        String bestRoute = "";
+
+        for (int nextLoc = 0; nextLoc < dist.length; nextLoc++) {
+            if ((mask & (1 << nextLoc)) == 0) {
+                int cost = dist[pos][nextLoc] + 
+                    dynamicProgrammingEAROPHelper(nextLoc, mask | (1 << nextLoc), dist, memo, VISITED_ALL, paths);
+                
+                if (cost < minCost) {
+                    minCost = cost;
+                    bestRoute = locations[pos] + " -> " + paths[nextLoc][mask | (1 << nextLoc)];
+                }
+            }
+        }
+
+        paths[pos][mask] = bestRoute;
+        return memo[pos][mask] = minCost;
+    }
+
+    // ============================================
+    // Backtracking Route Optimization
+    // ============================================
+    private static int bestCostBacktrack = 999999;
+    private static String bestRouteBacktrack = "";
+
+    public static String backtrackingEAROP(int[][] dist) {
+        // TO BE IMPLEMENTED: Backtracking Algorithm logic
+        // Write your code here
+        int totalNodes = dist.length;
+        boolean[] visitedArr = new boolean[totalNodes];
+        visitedArr[0] = true;
+        bestCostBacktrack = 999999;
+        
+        StringBuilder currentPath = new StringBuilder(locations[0]);
+        earopBacktracking(0, dist, visitedArr, totalNodes, 1, 0, currentPath);
+
+        return "Backtracking Ambulance Route: " + bestRouteBacktrack + " | Total Cost: " + bestCostBacktrack;
+    }
+
+    // Backtracking Helper Method
+    private static int earopBacktracking(
+            int pos,
+            int[][] dist,
+            boolean[] visited,
+            int n,
+            int count,
+            int cost,
+            StringBuilder path) {
+        // TO BE IMPLEMENTED:
+        // Private recursive method for Backtracking algorithm logic
+        // Write your code here
+        if (count == n && dist[pos][0] > 0) {
+            int totalCost = cost + dist[pos][0];
+            if (totalCost < bestCostBacktrack) {
+                bestCostBacktrack = totalCost;
+                bestRouteBacktrack = path.toString() + " -> " + locations[0];
+            }
+            return totalCost;
+        }
+
+        for (int nextNode = 0; nextNode < n; nextNode++) {
+            if (!visited[nextNode] && dist[pos][nextNode] > 0) {
+                visited[nextNode] = true;
+                int originalLength = path.length();
+                path.append(" -> ").append(locations[nextNode]);
+
+                if (cost + dist[pos][nextNode] < bestCostBacktrack) {
+                    earopBacktracking(nextNode, dist, visited, n, count + 1, cost + dist[pos][nextNode], path);
+                }
+
+                // undo selection (backtrack)
+                path.setLength(originalLength);
+                visited[nextNode] = false;
+            }
+        }
+        return bestCostBacktrack;
+    }
+
+    // ============================================
+    // Divide and Conquer Route Optimization
+    // ============================================
+    private static int lowestDnCCost = 999999;
+    private static String lowestDnCPath = "";
+
+    public static String divideAndConquerEAROP(int[][] dist) {
+        // TO BE IMPLEMENTED: Divide and Conquer Algorithm logic
+        // Write your code here
+        int numNodes = dist.length;
+        boolean[] visitCheck = new boolean[numNodes];
+        visitCheck[0] = true;
+        lowestDnCCost = 999999;
+
+        StringBuilder tempPath = new StringBuilder(locations[0]);
+        divideAndConquerHelper(0, visitCheck, 0, dist, numNodes, tempPath);
+
+        return "Divide & Conquer Ambulance Route: " + lowestDnCPath + " | Total Cost: " + lowestDnCCost;
+    }
+
+    // Divide and Conquer Helper Method
+    private static int divideAndConquerHelper(
+            int pos,
+            boolean[] visited,
+            int currentCost,
+            int[][] dist,
+            int n,
+            StringBuilder path) {
+        // TO BE IMPLEMENTED:
+        // Private recursive method for Divide and Conquer algorithm logic
+        // Write your code here
+        if (allVisited(visited)) {
+            int fullCost = currentCost + dist[pos][0];
+            if (fullCost < lowestDnCCost) {
+                lowestDnCCost = fullCost;
+                lowestDnCPath = path.toString() + " -> " + locations[0];
+            }
+            return fullCost;
+        }
+
+        for (int target = 0; target < n; target++) {
+            if (!visited[target]) {
+                visited[target] = true;
+                int pathLength = path.length();
+                path.append(" -> ").append(locations[target]);
+
+                divideAndConquerHelper(target, visited, currentCost + dist[pos][target], dist, n, path);
+
+                path.setLength(pathLength);
+                visited[target] = false;
+            }
+        }
+        return lowestDnCCost;
+    }
+
+    // Check whether all emergency locations have been visited
+    private static boolean allVisited(boolean[] visited) {
+        // TO BE IMPLEMENTED:
+        // Test whether all emergency locations have been visited
+        for (boolean status : visited) {
+            if (!status) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // ============================================
+    // Insertion Sort
+    // ============================================
+    public static String insertionSort(int[] arr) {
+        // TO BE IMPLEMENTED: Insertion Sort Algorithm logic
+        // Write your code here
+        int size = arr.length;
+        for (int i = 1; i < size; i++) {
+            int temp = arr[i];
+            int j = i - 1;
+            while (j >= 0 && arr[j] > temp) {
+                arr[j + 1] = arr[j];
+                j = j - 1;
+            }
+            arr[j + 1] = temp;
+        }
+        return Arrays.toString(arr);
+    }
+
+    // ============================================
+    // Binary Search
+    // ============================================
+    public static String binarySearch(int[] arr, int target) {
+        // TO BE IMPLEMENTED: Binary Search Algorithm logic
+        // Write your code here
+        int start = 0;
+        int end = arr.length - 1;
+
+        while (start <= end) {
+            int middle = start + (end - start) / 2;
+
+            if (arr[middle] == target) {
+                return String.valueOf(middle);
+            }
+            if (arr[middle] < target) {
+                start = middle + 1;
+            } else {
+                end = middle - 1;
+            }
+        }
+        return "-1";
+    }
+
+    // ============================================
+    // Min-Heap
+    // ============================================
+    static class MinHeap {
+        private PriorityQueue<Integer> heap = new PriorityQueue<>();
+
+        // Insert a value into the Min-Heap
+        public void insert(int value) {
+            // TO BE IMPLEMENTED: Heap insertion logic
+            // Write your code here
+            heap.add(value);
+        }
+
+        // Remove and return the minimum value
+        public int extractMin() {
+            // TO BE IMPLEMENTED: Heap extraction logic
+            // Write your code here
+            if (heap.isEmpty()) {
+                return -1;
+            }
+            return heap.poll();
+        }
+    }
+
+    // ============================================
+    // Splay Tree
+    // ============================================
+    static class SplayTree {
+        // TO BE IMPLEMENTED:
+        // Splay Tree Algorithm logic
+        class Node {
+            int data;
+            Node left, right;
+            Node(int val) { 
+                this.data = val; 
+            }
+        }
+
+        private Node root;
+
+        private Node rotateRight(Node node) {
+            Node temp = node.left;
+            node.left = temp.right;
+            temp.right = node;
+            return temp;
+        }
+
+        private Node rotateLeft(Node node) {
+            Node temp = node.right;
+            node.right = temp.left;
+            temp.left = node;
+            return temp;
+        }
+
+        private Node splayOperation(Node currRoot, int val) {
+            if (currRoot == null || currRoot.data == val) {
+                return currRoot;
+            }
+
+            if (currRoot.data > val) {
+                if (currRoot.left == null) return currRoot;
+
+                if (currRoot.left.data > val) {
+                    currRoot.left.left = splayOperation(currRoot.left.left, val);
+                    currRoot = rotateRight(currRoot);
+                } else if (currRoot.left.data < val) {
+                    currRoot.left.right = splayOperation(currRoot.left.right, val);
+                    if (currRoot.left.right != null) {
+                        currRoot.left = rotateLeft(currRoot.left);
+                    }
+                }
+                return (currRoot.left == null) ? currRoot : rotateRight(currRoot);
+            } else {
+                if (currRoot.right == null) return currRoot;
+
+                if (currRoot.right.data > val) {
+                    currRoot.right.left = splayOperation(currRoot.right.left, val);
+                    if (currRoot.right.left != null) {
+                        currRoot.right = rotateRight(currRoot.right);
+                    }
+                } else if (currRoot.right.data < val) {
+                    currRoot.right.right = splayOperation(currRoot.right.right, val);
+                    currRoot = rotateLeft(currRoot);
+                }
+                return (currRoot.right == null) ? currRoot : rotateLeft(currRoot);
+            }
+        }
+
+        public void insert(int value) {
+            // Write your code here
+            if (root == null) {
+                root = new Node(value);
+                return;
+            }
+            root = splayOperation(root, value);
+            if (root.data == value) return;
+
+            Node newNode = new Node(value);
+            if (root.data > value) {
+                newNode.right = root;
+                newNode.left = root.left;
+                root.left = null;
+            } else {
+                newNode.left = root;
+                newNode.right = root.right;
+                root.right = null;
+            }
+            root = newNode;
+        }
+
+        public boolean search(int value) {
+            // Write your code here
+            root = splayOperation(root, value);
+            return root != null && root.data == value;
+        }
+    }
+
+    // ============================================
+    // Driver Method
+    // ============================================
+    public static void main(String[] args) {
+        // Route Optimization Algorithms
+        System.out.println(greedyEAROP(costMatrix));
+        System.out.println(dynamicProgrammingEAROP(costMatrix));
+        System.out.println(backtrackingEAROP(costMatrix));
+        System.out.println(divideAndConquerEAROP(costMatrix));
+
+        // Sorting and Searching
+        int[] arr = {8, 3, 5, 1, 9, 2};
+        insertionSort(arr);
+        System.out.println("Sorted Emergency Response Times: " + Arrays.toString(arr));
+        System.out.println("Binary Search (Response Time 5 found at index): " + binarySearch(arr, 5));
+
+        // Min-Heap Test
+        MinHeap heap = new MinHeap();
+        heap.insert(10);
+        heap.insert(3);
+        heap.insert(15);
+        System.out.println("Min-Heap Extract Minimum Priority Value: " + heap.extractMin());
+
+        // Splay Tree Test
+        SplayTree tree = new SplayTree();
+        tree.insert(20);
+        tree.insert(10);
+        tree.insert(30);
+        System.out.println("Splay Tree Search (Emergency Case 10 found): " + tree.search(10));
+    }
+}
